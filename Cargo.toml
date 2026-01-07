@@ -1,0 +1,6 @@
+[workspace]
+members = ["crates/app", "crates/engine", "crates/game"]
+resolver = "2"
+
+[workspace.dependencies]
+bevy = "0.17.3"
