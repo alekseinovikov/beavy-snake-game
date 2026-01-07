@@ -1,0 +1,8 @@
+[package]
+name = "beavy-config"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "beavy_config"
+path = "src/lib.rs"
