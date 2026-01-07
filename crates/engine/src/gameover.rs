@@ -1,18 +1,18 @@
 use bevy::prelude::*;
 use beavy_config as config;
 
-use crate::state::AppState;
+use crate::state::{AppState, GameResource};
 
 #[derive(Component)]
-pub(crate) struct MenuRoot;
+pub(crate) struct GameOverRoot;
 
 #[derive(Component, Copy, Clone)]
-pub(crate) enum MenuButtonAction {
-    Start,
+pub(crate) enum GameOverAction {
+    Restart,
     Exit,
 }
 
-pub(crate) fn setup_menu(mut commands: Commands) {
+pub(crate) fn setup_game_over(mut commands: Commands, state: Res<GameResource>) {
     commands
         .spawn((
             Node {
@@ -24,18 +24,28 @@ pub(crate) fn setup_menu(mut commands: Commands) {
                 row_gap: px(config::ui::PANEL_GAP),
                 ..default()
             },
-            BackgroundColor(color(config::colors::MENU_BG)),
-            MenuRoot,
+            BackgroundColor(color(config::colors::GAME_OVER_BG)),
+            GameOverRoot,
         ))
         .with_children(|parent| {
             parent.spawn((
-                Text::new(config::text::MENU_TITLE),
+                Text::new(config::text::GAME_OVER_TITLE),
                 TextFont {
                     font_size: config::ui::TITLE_FONT_SIZE,
                     ..default()
                 },
                 TextColor(color(config::colors::WHITE)),
-                MenuRoot,
+                GameOverRoot,
+            ));
+
+            parent.spawn((
+                Text::new(format!("{}{}", config::text::SCORE_LABEL, state.0.score)),
+                TextFont {
+                    font_size: config::ui::SUBTITLE_FONT_SIZE,
+                    ..default()
+                },
+                TextColor(color(config::colors::GAME_OVER_TEXT)),
+                GameOverRoot,
             ));
 
             parent
@@ -49,20 +59,20 @@ pub(crate) fn setup_menu(mut commands: Commands) {
                         border: UiRect::all(px(config::ui::BUTTON_BORDER)),
                         ..default()
                     },
-                    BorderColor::all(color(config::colors::MENU_BUTTON_BORDER)),
-                    BackgroundColor(color(config::colors::MENU_BUTTON_BG)),
-                    MenuButtonAction::Start,
-                    MenuRoot,
+                    BorderColor::all(color(config::colors::GAME_OVER_BUTTON_BORDER)),
+                    BackgroundColor(color(config::colors::GAME_OVER_BUTTON_BG)),
+                    GameOverAction::Restart,
+                    GameOverRoot,
                 ))
                 .with_children(|button| {
                     button.spawn((
-                        Text::new(config::text::MENU_START),
+                        Text::new(config::text::GAME_OVER_RESTART),
                         TextFont {
                             font_size: config::ui::BUTTON_FONT_SIZE,
                             ..default()
                         },
                         TextColor(color(config::colors::WHITE)),
-                        MenuRoot,
+                        GameOverRoot,
                     ));
                 });
 
@@ -77,86 +87,51 @@ pub(crate) fn setup_menu(mut commands: Commands) {
                         border: UiRect::all(px(config::ui::BUTTON_BORDER)),
                         ..default()
                     },
-                    BorderColor::all(color(config::colors::MENU_BUTTON_BORDER)),
-                    BackgroundColor(color(config::colors::MENU_BUTTON_BG)),
-                    MenuButtonAction::Exit,
-                    MenuRoot,
+                    BorderColor::all(color(config::colors::GAME_OVER_BUTTON_BORDER)),
+                    BackgroundColor(color(config::colors::GAME_OVER_EXIT_BG)),
+                    GameOverAction::Exit,
+                    GameOverRoot,
                 ))
                 .with_children(|button| {
                     button.spawn((
-                        Text::new(config::text::MENU_EXIT),
+                        Text::new(config::text::GAME_OVER_EXIT),
                         TextFont {
                             font_size: config::ui::BUTTON_FONT_SIZE,
                             ..default()
                         },
                         TextColor(color(config::colors::WHITE)),
-                        MenuRoot,
+                        GameOverRoot,
                     ));
                 });
         });
 }
 
-pub(crate) fn menu_input(
-    mut interactions: Query<(&Interaction, &MenuButtonAction), Changed<Interaction>>,
+pub(crate) fn game_over_input(
+    mut interactions: Query<(&Interaction, &GameOverAction), Changed<Interaction>>,
     mut next_state: ResMut<NextState<AppState>>,
     mut exit: MessageWriter<AppExit>,
 ) {
     for (interaction, action) in &mut interactions {
         if *interaction == Interaction::Pressed {
             match action {
-                MenuButtonAction::Start => next_state.set(AppState::Playing),
-                MenuButtonAction::Exit => {
-                    exit.write(AppExit::Success);
+                GameOverAction::Restart => next_state.set(AppState::Playing),
+                GameOverAction::Exit => {
+                    let _ = exit.write(AppExit::Success);
                 }
             }
         }
     }
 }
 
-pub(crate) fn cleanup_menu(
+pub(crate) fn cleanup_game_over(
     mut commands: Commands,
-    menu_entities: Query<Entity, (With<MenuRoot>, Without<ChildOf>)>,
+    entities: Query<Entity, (With<GameOverRoot>, Without<ChildOf>)>,
 ) {
-    for entity in &menu_entities {
+    for entity in &entities {
         commands.entity(entity).despawn();
     }
 }
 
 fn color(rgb: (f32, f32, f32)) -> Color {
     Color::srgb(rgb.0, rgb.1, rgb.2)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use bevy::prelude::{App, Entity, With};
-
-    #[test]
-    fn setup_menu_spawns_entities() {
-        let mut app = App::new();
-        app.add_systems(Startup, setup_menu);
-        app.update();
-
-        let count = {
-            let world = app.world_mut();
-            let mut query = world.query_filtered::<Entity, With<MenuRoot>>();
-            query.iter(world).count()
-        };
-        assert!(count > 0);
-    }
-
-    #[test]
-    fn cleanup_menu_despawns_roots() {
-        let mut app = App::new();
-        app.add_systems(Startup, setup_menu);
-        app.add_systems(Update, cleanup_menu);
-        app.update();
-
-        let count = {
-            let world = app.world_mut();
-            let mut query = world.query_filtered::<Entity, With<MenuRoot>>();
-            query.iter(world).count()
-        };
-        assert_eq!(count, 0);
-    }
 }
